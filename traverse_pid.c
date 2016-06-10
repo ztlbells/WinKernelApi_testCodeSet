@@ -46,21 +46,20 @@ void getAllProc(){
 	//start -> &object_table
 	start = (BYTE*)(*((DWORD*)addr));
 	pid = getPID(start);\
-	DbgPrint("No.%04d : pid-%04d\n",nproc,pid);
+	DbgPrint("[_LINK_ENTRY]:No.%04d : pid-%04d\n",nproc,pid);
 
 	addr=getNextEntry(start,OBJECT_TABLE_LIST_ENTRY_OFFESET);	
 
 	while(addr!=start){
 		pid = getPID(addr);
 		nproc++;
-		DbgPrint("No.%04d : pid-%04d\n",nproc,pid);
+		DbgPrint("[_LINK_ENTRY]:No.%04d : pid-%04d\n",nproc,pid);
 		addr=getNextEntry(addr,OBJECT_TABLE_LIST_ENTRY_OFFESET);
 	}
 	
 }
 
 VOID DriverUnload(PDRIVER_OBJECT driver){
-	DbgPrint("[END]:traversePID...\r\n");
 }
 
 //entry == main
@@ -69,7 +68,6 @@ NTSTATUS DriverEntry (PDRIVER_OBJECT driver, PUNICODE_STRING reg_path){
 	//unload
 	driver->DriverUnload = DriverUnload;
 
-	DbgPrint("[BEGIN]:traversePID...\r\n");
 	getAllProc();
 	return STATUS_SUCCESS;
 }
